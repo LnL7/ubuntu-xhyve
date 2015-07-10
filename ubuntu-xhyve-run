@@ -1,0 +1,29 @@
+#!/bin/bash
+
+CHANNEL=${CHANNEL:-ubuntu}
+
+LATEST=$(ls -r imgs/*.vmlinuz | head -n 1 | sed -e "s,.*${CHANNEL}.,," -e "s,-server-amd64.*,,")
+if [[ -z ${LATEST} ]]; then
+    echo "Error: couldn't find anything to load locally."
+    exit 1
+fi
+VERSION=${VERSION:-${LATEST}}
+
+PAYLOAD=${CHANNEL}-${VERSION}-server-amd64
+
+VMLINUZ=${PAYLOAD}.vmlinuz-3.16.0-30-generic
+INITRD=${PAYLOAD}.initrd.img-3.16.0-30-generic
+ISO=${PAYLOAD}.iso
+SDA=${PAYLOAD}.sda.img
+
+CMDLINE="earlyprintk=serial console=ttyS0 root=/dev/vda1 ro"
+
+MEMORY=${MEMORY:-1024}
+MEM="-m ${MEMORY}M"
+#SMP="-c 2"
+NET="-s 2:0,virtio-net"
+IMG_HDD="-s 4,virtio-blk,imgs/${SDA}"
+PCI_DEV="-s 0:0,hostbridge -s 31,lpc"
+LPC_DEV="-l com1,stdio"
+
+../xhyve/build/xhyve -A $MEM $SMP $PCI_DEV $LPC_DEV $NET $IMG_HDD -f kexec,imgs/$VMLINUZ,imgs/$INITRD,"$CMDLINE"
